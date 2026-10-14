@@ -1,5 +1,6 @@
 # -*- mode: python ; coding: utf-8 -*-
 import os
+import sys
 
 from PyInstaller.utils.hooks import collect_data_files, copy_metadata
 
@@ -30,13 +31,17 @@ datas += [
     ('.streamlit/config.toml', '.streamlit'),
 ]
 
-# Bundle ffmpeg.exe only if it's in the project root. It's gitignored, so a
-# fresh clone won't have it; the app then uses FFmpeg from PATH at runtime.
+# Bundle FFmpeg only if it's in the project root. It's gitignored, so a fresh
+# clone won't have it; the app then uses FFmpeg from PATH at runtime. Look next
+# to this spec (SPECPATH), which is where PyInstaller resolves the other entries,
+# so the result doesn't depend on the folder the build is started from.
+ffmpeg_name = 'ffmpeg.exe' if sys.platform == 'win32' else 'ffmpeg'
+ffmpeg_path = os.path.join(SPECPATH, ffmpeg_name)
 binaries = []
-if os.path.isfile('ffmpeg.exe'):
-    binaries.append(('ffmpeg.exe', '.'))
+if os.path.isfile(ffmpeg_path):
+    binaries.append((ffmpeg_path, '.'))
 else:
-    print('WARNING: ffmpeg.exe not found in the project root; building without it. '
+    print(f'WARNING: {ffmpeg_name} not found in {SPECPATH}; building without it. '
           'Users will need FFmpeg on their PATH.')
 
 a = Analysis(
