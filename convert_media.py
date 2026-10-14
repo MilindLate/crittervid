@@ -14,13 +14,13 @@ FFMPEG_PATH = get_ffmpeg_path()  # Auto-detect ffmpeg location
 SUMMARY_REPORT = OUTPUT_ROOT / 'conversion_summary.txt'
 FAILED_FILES = OUTPUT_ROOT / 'conversion_failed.txt'
 
-# Hardware acceleration options for FFmpeg
+# Hardware acceleration options for FFmpeg: (options before -i, options after -i)
 ACCEL_OPTIONS = {
-    'cpu': [],
-    'cuda': ['-hwaccel', 'cuda', '-c:v', 'h264_nvenc'],
-    'qsv': ['-hwaccel', 'qsv', '-c:v', 'h264_qsv'],
-    'vaapi': ['-hwaccel', 'vaapi', '-c:v', 'h264_vaapi'],
-    'amf': ['-hwaccel', 'dxva2', '-c:v', 'h264_amf'],
+    'cpu': ([], []),
+    'cuda': (['-hwaccel', 'cuda'], ['-c:v', 'h264_nvenc']),
+    'qsv': (['-hwaccel', 'qsv'], ['-c:v', 'h264_qsv']),
+    'vaapi': (['-hwaccel', 'vaapi'], ['-c:v', 'h264_vaapi']),
+    'amf': (['-hwaccel', 'dxva2'], ['-c:v', 'h264_amf']),
 }
 
 def detect_accel():
@@ -65,7 +65,7 @@ def find_media_files(root):
                 yield Path(dirpath) / filename
 
 # Convert .media to .mp4, preserving timestamp and group ID
-def convert_media_file(media_path, summary, accel, failed_files):
+def convert_media_file(media_path, summary, accel, failed_files, copy_mode=False):
     parts = media_path.parts
     tmp_path = None
     try:
@@ -84,25 +84,10 @@ def convert_media_file(media_path, summary, accel, failed_files):
             print(skip_msg)
             summary.append(skip_msg)
             return True
-        # Check for copy mode
-        if hasattr(convert_media_file, 'copy_mode') and convert_media_file.copy_mode:
+        if copy_mode:
             cmd = [FFMPEG_PATH, '-y', '-i', str(media_path), '-c:v', 'copy', '-f', 'mp4', str(tmp_path)]
         else:
-            input_opts = []
-            output_opts = []
-            if accel == 'cuda':
-                input_opts = ['-hwaccel', 'cuda']
-                output_opts = ['-c:v', 'h264_nvenc']
-            elif accel == 'qsv':
-                input_opts = ['-hwaccel', 'qsv']
-                output_opts = ['-c:v', 'h264_qsv']
-            elif accel == 'vaapi':
-                input_opts = ['-hwaccel', 'vaapi']
-                output_opts = ['-c:v', 'h264_vaapi']
-            elif accel == 'amf':
-                input_opts = ['-hwaccel', 'dxva2']
-                output_opts = ['-c:v', 'h264_amf']
-            # CPU: no extra options
+            input_opts, output_opts = ACCEL_OPTIONS[accel]
             cmd = [FFMPEG_PATH, '-y'] + input_opts + ['-i', str(media_path)] + output_opts + ['-f', 'mp4', str(tmp_path)]
         result = subprocess.run(cmd, capture_output=True)
         if result.returncode != 0:
@@ -114,7 +99,7 @@ def convert_media_file(media_path, summary, accel, failed_files):
             return False
         else:
             tmp_path.replace(out_path)
-            if hasattr(convert_media_file, 'copy_mode') and convert_media_file.copy_mode:
+            if copy_mode:
                 success_msg = f"SUCCESS: Copied {media_path} -> {out_path} [copy]"
             else:
                 success_msg = f"SUCCESS: Converted {media_path} -> {out_path} [{accel}]"
@@ -131,13 +116,12 @@ def convert_media_file(media_path, summary, accel, failed_files):
         return False
 
 def convert_media_file_parallel(args):
-        media_path, accel, copy_mode = args
-        # Use a local summary and failed list for thread safety
-        local_summary = []
-        local_failed = []
-        convert_media_file.copy_mode = copy_mode
-        success = convert_media_file(media_path, local_summary, accel, local_failed)
-        return local_summary, local_failed, success
+    media_path, accel, copy_mode = args
+    # Use a local summary and failed list for thread safety
+    local_summary = []
+    local_failed = []
+    success = convert_media_file(media_path, local_summary, accel, local_failed, copy_mode)
+    return local_summary, local_failed, success
 
 def main():
     # Paths can contain characters the console's code page can't encode (e.g. the

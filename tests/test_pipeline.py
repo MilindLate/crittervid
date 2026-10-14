@@ -34,6 +34,42 @@ def test_failed_file_is_converted_on_next_run(ws):
     assert not (ws.root / 'output' / 'conversion_failed.txt').exists()
 
 
+def test_copy_mode_copies_the_video_stream(ws):
+    ws.add_media('0001.media', b'good')
+    ws.env['FAKE_FFMPEG_LOG'] = str(ws.root / 'ffmpeg_calls.jsonl')
+
+    result = ws.run('convert_media.py', '--copy')
+
+    assert result.returncode == 0
+    assert '[copy]' in result.stdout
+    [args] = ws.ffmpeg_calls()
+    assert args[args.index('-c:v') + 1] == 'copy'
+    assert '-hwaccel' not in args
+
+
+@pytest.mark.parametrize(('accel', 'hwaccel', 'encoder'), [
+    ('cuda', 'cuda', 'h264_nvenc'),
+    ('qsv', 'qsv', 'h264_qsv'),
+    ('vaapi', 'vaapi', 'h264_vaapi'),
+    ('amf', 'dxva2', 'h264_amf'),
+    ('cpu', None, None),
+])
+def test_accel_options_reach_ffmpeg(ws, accel, hwaccel, encoder):
+    ws.add_media('0001.media', b'good')
+    ws.env['FAKE_FFMPEG_LOG'] = str(ws.root / 'ffmpeg_calls.jsonl')
+
+    assert ws.run('convert_media.py', '--accel', accel).returncode == 0
+
+    [args] = ws.ffmpeg_calls()
+    i = args.index('-i')
+    if hwaccel:
+        # Decoder option before the input, encoder after it
+        assert args[args.index('-hwaccel') + 1] == hwaccel and args.index('-hwaccel') < i
+        assert args[args.index('-c:v') + 1] == encoder and args.index('-c:v') > i
+    else:
+        assert '-hwaccel' not in args and '-c:v' not in args
+
+
 # --- Merge ---
 
 def test_merge_succeeds(ws):

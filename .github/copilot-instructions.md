@@ -1,44 +1,27 @@
-# Copilot Instructions for crittervid
+# Copilot Instructions for CritterVid
 
-This project processes segmented `.media` files from Green Feathers wildlife cameras, converting them to `.mp4` and merging them into longer video clips. Follow these guidelines to maximize productivity:
+CritterVid converts segmented `.media` files from wildlife trail cameras into `.mp4`, merges them into longer clips per day, and validates that the results play. It runs as a command-line pipeline or a Streamlit GUI, and can be packaged as a Windows executable with PyInstaller.
 
-## Project Architecture
-- **Input Directory**: All raw camera files are under `input/DCIM/YYYY/MM/DD/groupid/`.
-- **.media Files**: Each subfolder contains many `.media` files (short video segments) and a `.info` file (metadata).
-- **Output Structure**: Place converted `.mp4` files and merged clips in a clearly organized output directory (suggest: `output/` with similar date-based structure).
+## Input layout
+- Camera files live under `input/DCIM/YYYY/MM/DD/<unix_timestamp>_<NNNN>/*.media`, with a `.info` file alongside (currently unused).
+- The layout matches Tuya's documented IPC storage format: the folder timestamp is the event start (UTC) and `NNNN` is the event length in seconds; each `.media` file name is its offset in seconds into the event. The code currently calls `NNNN` a "group ID" (see issue #30).
 
-## Essential Workflows
-- **Conversion**: Use FFmpeg or similar tools to convert `.media` files to `.mp4`. Automate batch conversion for all files in a folder.
-- **Merging**: After conversion, merge `.mp4` segments into longer clips (e.g., per hour or per day) using FFmpeg's concat feature.
-- **Automation**: Scripts should recursively process all folders, handling new files as they arrive.
+## Pipeline
+- `convert_media.py` — `.media` → `.mp4` with FFmpeg in a thread pool; optional hardware encoding (`--accel`) or stream copy (`--copy`).
+- `merge_videos.py` — groups converted clips by day and joins them with FFmpeg's concat demuxer into `--splits-per-day` files.
+- `validate_output.py` — decodes every output to check it plays.
+- `process_all.py` — runs the three stages in order; `app.py` is the GUI that runs `process_all.py`.
+- `ffmpeg_helper.py` — finds FFmpeg (project folder, then `PATH`).
 
-## Patterns & Conventions
-- **File Naming**: Preserve original timestamps and camera IDs in output filenames for traceability.
-- **Error Handling**: Log failed conversions and merges; skip corrupted files but report them.
-- **Extensibility**: Design scripts to easily add support for new camera models or file formats.
-- **Metadata Usage**: Parse `.info` files for additional context (e.g., recording time, camera settings).
+## Conventions
+- Write FFmpeg output to `<name>.mp4.part` and rename on success, so a failed run never leaves a partial `.mp4`.
+- Every script exits non-zero when anything fails; `process_all.py` exits non-zero if any stage did.
+- Write all text (stdout, summaries, concat lists) as UTF-8; escape `'` as `'\''` in concat lists.
+- Keep code cross-platform (Windows, macOS, Linux): `pathlib`, no Windows-only APIs.
 
-## Integration Points
-- **FFmpeg**: Ensure FFmpeg is installed and accessible in the environment. Document install steps if not present.
-- **Batch Processing**: Prefer Python scripts for automation, but shell scripts are acceptable for simple tasks.
-- **Testing**: Validate output videos for playback and integrity. Optionally, generate logs or summary reports.
+## Tests
+- `python -m pytest`. Most tests use a stand-in FFmpeg (`tests/fake_ffmpeg.py`); `tests/test_real_ffmpeg.py` needs FFmpeg on `PATH` and is skipped otherwise.
+- CI runs the suite on Windows, macOS and Ubuntu (`.github/workflows/tests.yml`).
 
-## Example Workflow
-1. Scan `input/DCIM` for all `.media` files.
-2. Convert each `.media` file to `.mp4` using FFmpeg:
-   ```sh
-   ffmpeg -i inputfile.media outputfile.mp4
-   ```
-3. Merge `.mp4` files for a time period:
-   ```sh
-   ffmpeg -f concat -safe 0 -i filelist.txt -c copy merged.mp4
-   ```
-4. Place results in `output/` with clear naming.
-
-## Key Files & Directories
-- `input/DCIM/` — Source files from cameras
-- `output/` — Destination for processed videos
-- Scripts (to be created): `convert_media.py`, `merge_videos.py`, etc.
-
----
-For questions or improvements, update this file to help future AI agents and developers.
+## Workflow
+- Work is tracked as GitHub issues grouped into roadmap milestones (Phase 0–10). One branch per issue; PRs reference it with `Closes #N`.
