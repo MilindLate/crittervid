@@ -1,188 +1,136 @@
 # CritterVid - Deployment Guide
 
-## Building Standalone Executable
+This guide has three parts:
 
-### Prerequisites for Building (Developers Only)
-- Python 3.10 or higher installed on your **development machine**
-- PyInstaller (automatically installed by build.bat)
-- FFmpeg installed and in PATH (for testing)
+- [Using the packaged app](#using-the-packaged-app) — for researchers who were given `CritterVid.zip`
+- [Running from source](#running-from-source) — for anyone with a copy of this repository
+- [Building the packaged app](#building-the-packaged-app) — for whoever prepares `CritterVid.zip`
 
-**Note:** The standalone build still needs **Python 3.10+** on the user's machine, with the dependencies from `requirements.txt` installed, because the GUI starts the pipeline with an external `python` command. Fixing this is tracked in [#4](https://github.com/andriuszukas/crittervid/issues/4).
+## Using the packaged app
 
-### Build Steps
+The packaged app runs on **Windows 10 or newer**.
 
-1. **Install dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
+### What you need
 
-2. **Run the build script:**
-   ```bash
-   build.bat
-   ```
+1. **Python 3.10 or newer**, added to `PATH`. The app still uses your own Python to run the processing steps; removing this requirement is tracked in [#4](https://github.com/andriuszukas/crittervid/issues/4).
+   - Download it from https://www.python.org/downloads/.
+   - In the installer, tick **Add python.exe to PATH**. It is not ticked by default.
+   - To check, open a new Command Prompt and run `python --version`.
+   - No extra Python packages are needed.
+2. **FFmpeg**, unless the person who built the app bundled it (ask them). If it isn't bundled, either:
+   - install FFmpeg and add it to `PATH` (download from https://ffmpeg.org/download.html), or
+   - copy `ffmpeg.exe` into the `CritterVid\_internal\` folder.
 
-3. **Find your executable:**
-   - Location: `dist\CritterVid\`
-   - Main executable: `CritterVid.exe`
-   - Size: about 190–210 MB (Python runtime and dependencies), plus FFmpeg if `ffmpeg.exe` was in the project folder when building
+### Starting and stopping
 
-### Distribution
+1. Unzip `CritterVid.zip` and double-click `CritterVid.exe` in the `CritterVid` folder.
+2. A console window opens and prints an address, usually http://localhost:8501. Open it in your browser.
+3. Keep the console window open while you work. Closing it stops CritterVid.
 
-To distribute the application to end users:
+The app only accepts connections from your own computer, and needs no internet connection.
 
-1. **Copy the entire folder:**
-   ```
-   dist\CritterVid\
-   ```
-
-2. **Include FFmpeg (users need this):**
-   - Either: Add `ffmpeg.exe` to the `CritterVid` folder
-   - Or: Instruct users to install FFmpeg separately and add to PATH
-
-3. **Zip and share:**
-   ```bash
-   # Zip the folder
-   tar -a -c -f CritterVid.zip CritterVid
-   ```
-
-4. **Users need:**
-   - ✅ The zip file
-   - ✅ Python 3.10+ with `pip install -r requirements.txt` (until [#4](https://github.com/andriuszukas/crittervid/issues/4) is fixed)
-   - ✅ FFmpeg, unless it's bundled in the folder
-   - ✅ Windows 10 or higher
-
-### Running the Application
-
-**Option 1: Standalone executable (for end users)**
-```bash
-cd dist\CritterVid
-CritterVid.exe
-```
-It prints the address to open in your browser, usually http://localhost:8501. Python 3.10+ is still required for now (see the note above).
-
-**Option 2: Direct Python (for development only)**
-```bash
-streamlit run app.py
-# or
-run_app.bat
-```
-
-Open the address it prints in your browser, usually http://localhost:8501.
-
-## Running Without Building (Manual Setup)
-
-If you want to run the application directly without building the standalone .exe, you need:
+## Running from source
 
 ### Prerequisites
 
-**1. Python 3.10 or higher**
+1. **Python 3.10 to 3.13.** Python 3.14 isn't supported yet, because the pinned PyInstaller in `requirements.txt` doesn't install on it.
+   ```bash
+   python --version
+   ```
+2. **Python packages:**
+   - On **Windows**:
+     ```bash
+     pip install -r requirements.txt
+     ```
+     This installs Streamlit (the GUI), GPUtil and WMI (used by Auto GPU detection), PyInstaller (for building) and pytest (for tests).
+   - On **macOS and Linux**, `requirements.txt` doesn't install yet because WMI is Windows-only ([#6](https://github.com/andriuszukas/crittervid/issues/6)). Install Streamlit for the GUI instead:
+     ```bash
+     pip install streamlit==1.50.0
+     ```
+     The command-line scripts need no packages at all.
+3. **FFmpeg**, on `PATH` or as `ffmpeg.exe` (Windows) / `ffmpeg` (macOS, Linux) in the project folder. Download from https://ffmpeg.org/download.html.
+
+### Starting the GUI
+
+- **Windows:** double-click `run_app.bat`, then open the address it prints, usually http://localhost:8501.
+- **Any platform:** from the project folder, run
+  ```bash
+  streamlit run app.py
+  ```
+  This opens your browser automatically. The first time, Streamlit asks for an email address in the terminal; press Enter to skip.
+
+To stop the GUI, press Ctrl+C in its terminal, or run `stop_app.bat` on Windows.
+
+### Command line
+
 ```bash
-python --version  # Check if installed
-```
-Download from: https://www.python.org/downloads/
-
-**2. Install Python Dependencies**
-```bash
-cd crittervid
-pip install -r requirements.txt
-```
-
-This installs:
-- streamlit (Web UI framework)
-- GPUtil (GPU detection)
-- WMI (Windows Management Interface)
-- pyinstaller (only needed for building .exe)
-
-**3. FFmpeg (Required)**
-- Download: https://ffmpeg.org/download.html
-- Either add to system PATH, or place `ffmpeg.exe` in the project folder
-
-### Running the Application
-
-**Option 1: Quick Launch (recommended)**
-```bash
-run_app.bat
-```
-
-**Option 2: Streamlit Command**
-```bash
-streamlit run app.py
-```
-
-**Option 3: Run Pipeline Scripts Directly**
-```bash
-# Full pipeline
-python process_all.py --input-dir input/DCIM --output-dir output
+# Full pipeline: convert -> merge -> validate
+python process_all.py --input-dir input/DCIM --output-dir output --accel cuda
 
 # Individual steps
 python convert_media.py --input-dir input/DCIM --output-dir output --accel cuda
 python merge_videos.py --output-dir output --splits-per-day 2
 python validate_output.py --output-dir output --accel cuda
-```
 
-**Note:** The standalone .exe bundles the GUI, but still relies on a Python install to run the pipeline until [#4](https://github.com/andriuszukas/crittervid/issues/4) is fixed.
-
-## System Requirements
-
-### Minimum
-- Windows 10 or higher
-- 4GB RAM
-- FFmpeg installed
-
-### Recommended
-- Windows 10/11
-- 8GB+ RAM
-- NVIDIA GPU with CUDA support (for hardware acceleration)
-- SSD storage
-
-## GPU Acceleration
-
-The application supports hardware-accelerated video processing:
-- **NVIDIA**: CUDA (`--accel cuda`)
-- **Intel**: Quick Sync Video (`--accel qsv`)
-- **AMD**: AMF (`--accel amf`)
-- **Auto-detect**: Tries to detect the GPU. On Python 3.12 and newer it can't detect NVIDIA GPUs, so choose `cuda` explicitly ([#2](https://github.com/andriuszukas/crittervid/issues/2)).
-
-## Troubleshooting
-
-### "FFmpeg not found"
-- Install FFmpeg: https://ffmpeg.org/download.html
-- Add FFmpeg to system PATH
-- Or place `ffmpeg.exe` in the application folder
-
-### "Module not found" errors
-- Rebuild with: `build.bat`
-- Check all dependencies installed: `pip install -r requirements.txt`
-
-### Slow processing
-- Enable GPU acceleration in the UI
-- Reduce number of workers
-- Use `--copy` mode if video codec is compatible
-
-## Command-Line Usage
-
-All scripts can be run directly:
-
-```bash
-# Convert only
-python convert_media.py --input-dir input/DCIM --output-dir output --accel cuda
-
-# Merge only
-python merge_videos.py --output-dir output --splits-per-day 2
-
-# Validate only
-python validate_output.py --output-dir output --accel cuda
-
-# Full pipeline
-python process_all.py --input-dir input/DCIM --output-dir output --accel cuda
-
-# Retry failed conversions
+# Retry only the files that failed in the previous run
 python convert_media.py --retry-failed --max-retries 5
 ```
 
+## Building the packaged app
+
+Builds are Windows-only for now; builds for macOS and Linux are planned ([#46](https://github.com/andriuszukas/crittervid/issues/46)).
+
+1. Set up Python 3.10 to 3.13 and install `requirements.txt`, as in [Running from source](#running-from-source).
+2. **Optional:** put `ffmpeg.exe` in the project folder to bundle it, so users don't have to install FFmpeg. Without it, the build still works and prints a note that FFmpeg wasn't bundled.
+3. Run `build.bat`.
+4. The app is in `dist\CritterVid\`, with `CritterVid.exe` as the main program. It's about 190–210 MB, plus the size of `ffmpeg.exe` if bundled.
+5. Zip the whole `dist\CritterVid\` folder and share the zip:
+   ```bash
+   tar -a -c -f CritterVid.zip -C dist CritterVid
+   ```
+
+Tell users whether FFmpeg is bundled, and that they need Python on `PATH` (see [What you need](#what-you-need)).
+
+## System requirements
+
+- **Minimum:** 4 GB RAM, and enough free disk space for the converted videos (similar in size to the input).
+- **Recommended:** 8 GB+ RAM, an SSD, and an NVIDIA GPU for hardware-accelerated conversion.
+
+## GPU acceleration
+
+In the GUI, choose under **Hardware Acceleration**; on the command line, use `--accel`:
+
+| GUI | Command line | Hardware |
+|---|---|---|
+| NVIDIA | `--accel cuda` | NVIDIA GPUs (NVENC) |
+| Intel | `--accel qsv` | Intel Quick Sync Video |
+| AMD | `--accel amf` | AMD GPUs (AMF) |
+| CPU | `--accel cpu` | Software encoding; works everywhere, slowest |
+| Auto | `--accel auto` | Tries to detect the GPU (see below) |
+
+**Auto is unreliable for now.** On Python 3.12 and newer it never picks NVIDIA ([#2](https://github.com/andriuszukas/crittervid/issues/2)). For the packaged app, that means the Python version you installed. If you have an NVIDIA card, choose **NVIDIA** explicitly.
+
+## Troubleshooting
+
+### "FFmpeg not found", or every conversion fails
+- Install FFmpeg and add it to `PATH`, or
+- for the packaged app, copy `ffmpeg.exe` into `CritterVid\_internal\`, or
+- when running from source, put it in the project folder.
+
+### The packaged app reports "Pipeline failed with exit code 9009", or says Python can't be found
+Python isn't on `PATH`. Reinstall Python with **Add python.exe to PATH** ticked, then open a new Command Prompt and check `python --version`.
+
+### "Module not found" errors
+- When running from source, install the packages as described in [Running from source](#running-from-source).
+- For a build, rebuild with `build.bat`.
+
+### Slow processing
+- Choose your GPU under Hardware Acceleration instead of CPU or Auto.
+- Reduce the number of videos processed in parallel.
+- On the command line, `--copy` copies the video stream without re-encoding, which is much faster when the input is already H.264. It isn't available in the GUI.
+
 ## Notes
 
-- The standalone executable is **Windows-only**
-- For Linux/Mac, use Python directly
-- First run may be slower (Streamlit initialization)
-- No internet connection is needed; the GUI is served from your own computer
+- The packaged app is Windows-only. On macOS and Linux, run from source.
+- The first start can take a few seconds while Streamlit loads.
+- No internet connection is needed, and the GUI only accepts connections from your own computer.
