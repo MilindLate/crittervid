@@ -25,7 +25,10 @@ def _hostname(host_header):
 # Only serve requests addressed to this computer. The server listens on localhost
 # only, but a web page could still reach it through DNS rebinding (its own
 # hostname pointed at 127.0.0.1), so refuse any other Host before anything runs.
-if _hostname(st.context.headers.get("Host", "")).lower() not in ("localhost", "127.0.0.1", "::1"):
+# Browsers always send a Host header; it's absent only when the app runs without a
+# web server (Streamlit's test harness), which a web page can't reach.
+_host = st.context.headers.get("Host")
+if _host is not None and _hostname(_host).lower() not in ("localhost", "127.0.0.1", "::1"):
     st.error("CritterVid only accepts connections from this computer. "
              "Open it at http://localhost:8501 (or the address the launcher printed).")
     st.stop()
