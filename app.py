@@ -14,6 +14,22 @@ else:
 
 st.set_page_config(page_title="CritterVid", page_icon="🦜", layout="wide")
 
+
+def _hostname(host_header):
+    """Host header without its port: 'localhost:8501' -> 'localhost', '[::1]:8501' -> '::1'."""
+    if host_header.startswith('['):
+        return host_header[1:].split(']', 1)[0]
+    return host_header.split(':', 1)[0]
+
+
+# Only serve requests addressed to this computer. The server listens on localhost
+# only, but a web page could still reach it through DNS rebinding (its own
+# hostname pointed at 127.0.0.1), so refuse any other Host before anything runs.
+if _hostname(st.context.headers.get("Host", "")).lower() not in ("localhost", "127.0.0.1", "::1"):
+    st.error("CritterVid only accepts connections from this computer. "
+             "Open it at http://localhost:8501 (or the address the launcher printed).")
+    st.stop()
+
 st.title("🦜 CritterVid")
 st.markdown("*Automated processing pipeline for wildlife & trail-camera footage*")
 
@@ -148,17 +164,20 @@ if st.button("Run"):
     output_text = ""
     line_count = 0
 
-    # Run process with live output streaming. PYTHONUNBUFFERED is inherited by
-    # every pipeline stage, so their output arrives promptly and in order
-    env = dict(os.environ, PYTHONUNBUFFERED="1")
+    # Run process with live output streaming. These settings are inherited by every
+    # pipeline stage: PYTHONUNBUFFERED so output arrives promptly and in order, and
+    # PYTHONIOENCODING so stdout and stderr (including tracebacks raised before a
+    # script reconfigures its streams) are UTF-8, matching how they're decoded below
+    env = dict(os.environ, PYTHONUNBUFFERED="1", PYTHONIOENCODING="utf-8:replace")
     process = subprocess.Popen(
         cmd,
         env=env,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
-        text=True,
+        # The pipeline scripts write UTF-8 regardless of the system code page
+        encoding='utf-8',
+        errors='replace',
         bufsize=1,
-        universal_newlines=True
     )
 
     # Stream output line by line, update UI every 5 lines

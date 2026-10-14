@@ -92,7 +92,7 @@ def convert_media_file(media_path, summary, accel, failed_files, copy_mode=False
         result = subprocess.run(cmd, capture_output=True)
         if result.returncode != 0:
             tmp_path.unlink(missing_ok=True)
-            error_msg = f"ERROR: Failed to convert {media_path}: {result.stderr.decode()}"
+            error_msg = f"ERROR: Failed to convert {media_path}: {result.stderr.decode('utf-8', errors='replace')}"
             print(error_msg)
             summary.append(error_msg)
             failed_files.append(str(media_path))
@@ -124,6 +124,12 @@ def convert_media_file_parallel(args):
     return local_summary, local_failed, success
 
 def main():
+    # Paths can contain characters the console's code page can't encode (e.g. the
+    # Windows default when output is piped to the GUI), so always write UTF-8.
+    # The streams are None when there's no console at all (pythonw).
+    for stream in (sys.stdout, sys.stderr):
+        if stream is not None:
+            stream.reconfigure(encoding='utf-8', errors='replace')
     parser = argparse.ArgumentParser(description="Convert .media files to .mp4 with optional hardware acceleration.")
     parser.add_argument('--input-dir', type=str, default='input/DCIM', help='Input directory containing .media files (default: input/DCIM)')
     parser.add_argument('--output-dir', type=str, default='output', help='Output directory for converted .mp4 files (default: output)')
@@ -157,7 +163,7 @@ def main():
     # Determine which files to process
     if args.retry_failed and FAILED_FILES.exists():
         print(f"Retrying failed files from {FAILED_FILES}...")
-        with open(FAILED_FILES, 'r') as f:
+        with open(FAILED_FILES, 'r', encoding='utf-8') as f:
             media_files = [Path(line.strip()) for line in f if line.strip()]
         print(f"Found {len(media_files)} failed files to retry.")
     else:
@@ -202,14 +208,14 @@ def main():
 
     # Write results
     OUTPUT_ROOT.mkdir(parents=True, exist_ok=True)
-    with open(SUMMARY_REPORT, 'w') as f:
+    with open(SUMMARY_REPORT, 'w', encoding='utf-8') as f:
         for line in summary:
             f.write(line + '\n')
     print(f"Summary report written to {SUMMARY_REPORT}")
 
     # Write failed files list
     if failed_files:
-        with open(FAILED_FILES, 'w') as f:
+        with open(FAILED_FILES, 'w', encoding='utf-8') as f:
             for failed in failed_files:
                 f.write(failed + '\n')
         print(f"Failed files list written to {FAILED_FILES} ({len(failed_files)} files)")

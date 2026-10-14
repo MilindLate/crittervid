@@ -3,12 +3,14 @@
 A pipeline for processing wildlife / trail-camera footage. It converts proprietary
 `.media` segments to `.mp4`, merges them into longer per-day clips, and validates that
 the results are playable. Runs as a command-line tool or a simple browser-based GUI,
-and can be bundled into a standalone Windows executable.
+and can be bundled into a Windows executable (which currently still needs Python
+installed, see [#4](https://github.com/andriuszukas/crittervid/issues/4)).
 
 ## Features
 
 - **Convert** `.media` files to `.mp4` with FFmpeg, in parallel.
-- **Hardware acceleration** — NVIDIA (CUDA), Intel (QSV), AMD (AMF), or CPU, with auto-detection.
+- **Hardware acceleration** — NVIDIA (CUDA), Intel (QSV), AMD (AMF), or CPU. Auto-detection
+  exists but can't detect NVIDIA on Python 3.12+ ([#2](https://github.com/andriuszukas/crittervid/issues/2)), so choose your GPU explicitly.
 - **Merge** converted clips into one or more files per day (`--splits-per-day`).
 - **Validate** every output by re-decoding it to confirm it plays.
 - **Robust** — skips already-converted files, retries failures, handles Ctrl+C gracefully, and writes summary reports.
@@ -16,13 +18,14 @@ and can be bundled into a standalone Windows executable.
 
 ## Requirements
 
-- Python 3.7+
-- [FFmpeg](https://ffmpeg.org/download.html) — either on your `PATH`, or place `ffmpeg.exe` in the project folder.
-  > **Note:** `ffmpeg.exe` is intentionally **not** committed to this repo (it exceeds GitHub's file-size limit). Download it separately.
-- Python dependencies:
+- Python 3.10 to 3.13 (3.14 isn't supported yet: the pinned PyInstaller doesn't install on it)
+- [FFmpeg](https://ffmpeg.org/download.html) — either on your `PATH`, or place `ffmpeg.exe` (Windows) / `ffmpeg` (macOS, Linux) in the project folder.
+  > **Note:** FFmpeg is intentionally **not** committed to this repo (it exceeds GitHub's file-size limit). Download it separately.
+- Python dependencies, on Windows:
   ```bash
   pip install -r requirements.txt
   ```
+  On macOS and Linux, `requirements.txt` doesn't install yet ([#6](https://github.com/andriuszukas/crittervid/issues/6)); run `pip install streamlit==1.50.0` for the GUI. The command-line scripts need no packages.
 
 ## Input layout
 
@@ -38,11 +41,14 @@ Timestamps and group IDs are parsed from this layout and preserved in the output
 
 ### GUI (recommended)
 
+On Windows, double-click `run_app.bat` and open the address it prints (usually http://localhost:8501).
+On any platform, run this from the project folder; it opens your browser:
+
 ```bash
 streamlit run app.py
-# or, on Windows:
-run_app.bat
 ```
+
+The first time, Streamlit asks for an email address in the terminal; press Enter to skip.
 
 Select the input and output folders, choose hardware acceleration, and click **Run**.
 

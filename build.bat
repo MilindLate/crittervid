@@ -4,6 +4,9 @@ echo CritterVid - Build Script
 echo ========================================
 echo.
 
+REM Run from this script's folder, so relative paths work wherever it's started
+cd /d "%~dp0"
+
 REM Check if pyinstaller is installed
 python -c "import PyInstaller" 2>nul
 if errorlevel 1 (
@@ -40,6 +43,11 @@ echo The standalone application is in: dist\CritterVid\
 echo.
 echo To run: dist\CritterVid\CritterVid.exe
 echo.
-echo IMPORTANT: Make sure ffmpeg.exe is in your PATH or in the same folder!
+if exist ffmpeg.exe (
+    echo FFmpeg was bundled from ffmpeg.exe in the project folder.
+) else (
+    echo NOTE: FFmpeg was not bundled. Users need FFmpeg on their PATH, or
+    echo copy ffmpeg.exe into dist\CritterVid\_internal\ before zipping.
+)
 echo.
 pause

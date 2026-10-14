@@ -1,4 +1,6 @@
 """Pipeline behaviour, using the fake ffmpeg from fake_ffmpeg.py."""
+import os
+
 import pytest
 
 
@@ -118,6 +120,29 @@ def test_validate_fails_on_unplayable_output(ws):
 
 # --- Full pipeline ---
 
+@pytest.mark.parametrize(('args', 'expected_summaries'), [
+    ((), [
+        'Conversion summary: output/conversion_summary.txt',
+        'Merging summary: output/merged/merge_summary.txt',
+    ]),
+    (('--output-dir', 'reports'), [
+        'Conversion summary: reports/conversion_summary.txt',
+        'Merging summary: reports/merged/merge_summary.txt',
+    ]),
+    (('--output-dir', 'reports with spaces'), [
+        'Conversion summary: reports with spaces/conversion_summary.txt',
+        'Merging summary: reports with spaces/merged/merge_summary.txt',
+    ]),
+], ids=['default', 'relative', 'spaces'])
+def test_process_all_dry_run_summary_paths(ws, args, expected_summaries):
+    result = ws.run('process_all.py', '--dry-run', *args)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    summaries = [line for line in result.stdout.splitlines()
+                 if line.startswith(('Conversion summary:', 'Merging summary:'))]
+    assert summaries == [line.replace('/', os.sep) for line in expected_summaries]
+
+
 def test_process_all_succeeds(ws):
     ws.add_media('0001.media', b'good')
 
@@ -135,6 +160,30 @@ def test_process_all_fails_when_a_step_fails(ws):
 
     assert result.returncode == 1
     assert 'Some steps failed' in result.stdout
+
+
+def test_process_all_handles_quotes_and_non_ascii_in_paths(ws):
+    # An apostrophe must be escaped in the concat list, and characters outside
+    # the Windows default code page must not crash printing or file writes
+    out_dir = "out O'Brien ėų 野"
+    ws.add_media('0001.media', b'a')
+    ws.add_media('0002.media', b'b')
+
+    result = ws.run('process_all.py', '--accel', 'cpu', '--output-dir', out_dir)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    [merged] = (ws.root / out_dir).rglob('merged_*.mp4')
+    assert merged.read_bytes() == b'OKOKaOKb'
+    assert out_dir in result.stdout
+
+
+def test_error_output_is_utf8(ws):
+    # Errors go to stderr, which must be UTF-8 like stdout so the GUI shows
+    # non-ASCII characters in error messages correctly
+    result = ws.run('convert_media.py', '--accel', 'ė')
+
+    assert result.returncode != 0
+    assert "'ė'" in result.stderr
 
 
 def test_process_all_output_is_in_order_when_piped(ws):

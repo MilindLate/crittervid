@@ -21,7 +21,7 @@ CritterVid converts segmented `.media` files from wildlife trail cameras into `.
 
 ## Tests
 - `python -m pytest`. Most tests use a stand-in FFmpeg (`tests/fake_ffmpeg.py`); `tests/test_real_ffmpeg.py` needs FFmpeg on `PATH` and is skipped otherwise.
-- CI runs the suite on Windows and Ubuntu (`.github/workflows/tests.yml`).
+- CI runs the suite on Windows, macOS and Ubuntu (`.github/workflows/tests.yml`).
 
 ## Workflow
 - Work is tracked as GitHub issues grouped into roadmap milestones (Phase 0–10). One branch per issue; PRs reference it with `Closes #N`.

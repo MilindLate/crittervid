@@ -3,9 +3,9 @@ developmentMode = false
 
 [server]
 headless = false
+# Listen on this computer only; the GUI must not be reachable from the network
+address = "localhost"
 port = 8501
-enableCORS = false
-enableXsrfProtection = false
 
 [browser]
 gatherUsageStats = false

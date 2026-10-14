@@ -18,8 +18,13 @@ VALIDATE_SCRIPT = os.path.join(SCRIPT_DIR, 'validate_output.py')
 
 def main():
     # Flush each line so step headers stay in order with the child scripts' output
-    # when stdout is a pipe (e.g. the GUI or `| tee`)
-    sys.stdout.reconfigure(line_buffering=True)
+    # when stdout is a pipe (e.g. the GUI or `| tee`). Write UTF-8 like the child
+    # scripts, since paths can contain characters the console's code page lacks
+    # The streams are None when there's no console at all (pythonw).
+    if sys.stdout is not None:
+        sys.stdout.reconfigure(line_buffering=True, encoding='utf-8', errors='replace')
+    if sys.stderr is not None:
+        sys.stderr.reconfigure(encoding='utf-8', errors='replace')
     parser = argparse.ArgumentParser(description="Convert, merge and validate camera-trap videos.")
     parser.add_argument('--input-dir', type=str, default='input/DCIM', help='Input directory containing .media files (default: input/DCIM)')
     parser.add_argument('--output-dir', type=str, default='output', help='Output directory for converted .mp4 files (default: output)')
@@ -90,8 +95,8 @@ def main():
         rc3 = 0
 
     print("=== Summary ===")
-    print("Conversion summary: output/conversion_summary.txt")
-    print("Merging summary: output/merged/merge_summary.txt")
+    print(f"Conversion summary: {os.path.join(args.output_dir, 'conversion_summary.txt')}")
+    print(f"Merging summary: {os.path.join(args.output_dir, 'merged', 'merge_summary.txt')}")
     if args.validate:
         print("Validation: see console output above")
     else:
