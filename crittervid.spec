@@ -1,4 +1,6 @@
 # -*- mode: python ; coding: utf-8 -*-
+import os
+
 from PyInstaller.utils.hooks import collect_data_files, copy_metadata
 
 block_cipher = None
@@ -28,12 +30,19 @@ datas += [
     ('.streamlit/config.toml', '.streamlit'),
 ]
 
+# Bundle ffmpeg.exe only if it's in the project root. It's gitignored, so a
+# fresh clone won't have it; the app then uses FFmpeg from PATH at runtime.
+binaries = []
+if os.path.isfile('ffmpeg.exe'):
+    binaries.append(('ffmpeg.exe', '.'))
+else:
+    print('WARNING: ffmpeg.exe not found in the project root; building without it. '
+          'Users will need FFmpeg on their PATH.')
+
 a = Analysis(
     ['launcher.py'],
     pathex=[],
-    binaries=[
-        ('ffmpeg.exe', '.'),  # Bundle ffmpeg.exe if it exists in project root
-    ],
+    binaries=binaries,
     datas=datas,
     hiddenimports=[
         'streamlit',
