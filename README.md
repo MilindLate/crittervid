@@ -16,7 +16,7 @@ and can be bundled into a standalone Windows executable.
 
 ## Requirements
 
-- Python 3.7+
+- Python 3.10+
 - [FFmpeg](https://ffmpeg.org/download.html) — either on your `PATH`, or place `ffmpeg.exe` in the project folder.
   > **Note:** `ffmpeg.exe` is intentionally **not** committed to this repo (it exceeds GitHub's file-size limit). Download it separately.
 - Python dependencies:

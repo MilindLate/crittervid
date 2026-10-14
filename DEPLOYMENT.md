@@ -3,11 +3,11 @@
 ## Building Standalone Executable
 
 ### Prerequisites for Building (Developers Only)
-- Python 3.7 or higher installed on your **development machine**
+- Python 3.10 or higher installed on your **development machine**
 - PyInstaller (automatically installed by build.bat)
 - FFmpeg installed and in PATH (for testing)
 
-**Note:** End users do NOT need Python installed - it's bundled in the .exe!
+**Note:** The standalone build still needs **Python 3.10+** on the user's machine, with the dependencies from `requirements.txt` installed, because the GUI starts the pipeline with an external `python` command. Fixing this is tracked in [#4](https://github.com/andriuszukas/crittervid/issues/4).
 
 ### Build Steps
 
@@ -24,7 +24,7 @@
 3. **Find your executable:**
    - Location: `dist\CritterVid\`
    - Main executable: `CritterVid.exe`
-   - Size: ~188 MB (includes Python 3.13 runtime + all dependencies)
+   - Size: about 190–210 MB (Python runtime and dependencies), plus FFmpeg if `ffmpeg.exe` was in the project folder when building
 
 ### Distribution
 
@@ -46,8 +46,9 @@ To distribute the application to end users:
    ```
 
 4. **Users need:**
-   - ✅ The zip file (no Python installation required!)
-   - ✅ FFmpeg (separate download)
+   - ✅ The zip file
+   - ✅ Python 3.10+ with `pip install -r requirements.txt` (until [#4](https://github.com/andriuszukas/crittervid/issues/4) is fixed)
+   - ✅ FFmpeg, unless it's bundled in the folder
    - ✅ Windows 10 or higher
 
 ### Running the Application
@@ -57,16 +58,16 @@ To distribute the application to end users:
 cd dist\CritterVid
 CritterVid.exe
 ```
-End users do NOT need Python installed - everything is bundled in the .exe!
+It prints the address to open in your browser, usually http://localhost:8501. Python 3.10+ is still required for now (see the note above).
 
 **Option 2: Direct Python (for development only)**
 ```bash
-python app.py
+streamlit run app.py
 # or
 run_app.bat
 ```
 
-The Streamlit UI will open in your default browser.
+Open the address it prints in your browser, usually http://localhost:8501.
 
 ## Running Without Building (Manual Setup)
 
@@ -74,7 +75,7 @@ If you want to run the application directly without building the standalone .exe
 
 ### Prerequisites
 
-**1. Python 3.7 or higher**
+**1. Python 3.10 or higher**
 ```bash
 python --version  # Check if installed
 ```
@@ -119,7 +120,7 @@ python merge_videos.py --output-dir output --splits-per-day 2
 python validate_output.py --output-dir output --accel cuda
 ```
 
-**Note:** The standalone .exe is only needed for distribution to users who don't have Python installed.
+**Note:** The standalone .exe bundles the GUI, but still relies on a Python install to run the pipeline until [#4](https://github.com/andriuszukas/crittervid/issues/4) is fixed.
 
 ## System Requirements
 
@@ -140,7 +141,7 @@ The application supports hardware-accelerated video processing:
 - **NVIDIA**: CUDA (`--accel cuda`)
 - **Intel**: Quick Sync Video (`--accel qsv`)
 - **AMD**: AMF (`--accel amf`)
-- **Auto-detect**: Automatically detects available GPU
+- **Auto-detect**: Tries to detect the GPU. On Python 3.12 and newer it can't detect NVIDIA GPUs, so choose `cuda` explicitly ([#2](https://github.com/andriuszukas/crittervid/issues/2)).
 
 ## Troubleshooting
 
@@ -184,4 +185,4 @@ python convert_media.py --retry-failed --max-retries 5
 - The standalone executable is **Windows-only**
 - For Linux/Mac, use Python directly
 - First run may be slower (Streamlit initialization)
-- The application requires internet connection for Streamlit components
+- No internet connection is needed; the GUI is served from your own computer
