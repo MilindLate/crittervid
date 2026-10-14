@@ -15,7 +15,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, ubuntu-latest]
+        os: [windows-latest, ubuntu-latest, macos-latest]
         # 3.10 is the oldest Python pytest 9 supports; 3.13 is what the .exe ships
         python: ['3.10', '3.13']
     env:
@@ -35,6 +35,10 @@ jobs:
       - name: Install FFmpeg (Linux)
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
+      - name: Install FFmpeg (macOS)
+        if: runner.os == 'macOS'
+        run: brew install ffmpeg
 
       # The pipeline scripts only need the standard library; requirements.txt also
       # pulls in Windows-only and GUI packages, so install just the test runner
