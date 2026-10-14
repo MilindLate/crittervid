@@ -16,22 +16,11 @@ MERGE_SCRIPT = os.path.join(SCRIPT_DIR, 'merge_videos.py')
 VALIDATE_SCRIPT = os.path.join(SCRIPT_DIR, 'validate_output.py')
 
 
-def run_script(script, dry_run):
-    if dry_run:
-        print(f"[DRY RUN] Would run: python {script}")
-        return 0
-    print(f"Running: python {script}")
-    result = subprocess.run([sys.executable, script])
-    if result.returncode != 0:
-        print(f"ERROR: {script} failed with exit code {result.returncode}")
-    return result.returncode
-
-
 def main():
     # Flush each line so step headers stay in order with the child scripts' output
     # when stdout is a pipe (e.g. the GUI or `| tee`)
     sys.stdout.reconfigure(line_buffering=True)
-    parser = argparse.ArgumentParser(description="Convert and merge Green Feathers camera videos.")
+    parser = argparse.ArgumentParser(description="Convert, merge and validate camera-trap videos.")
     parser.add_argument('--input-dir', type=str, default='input/DCIM', help='Input directory containing .media files (default: input/DCIM)')
     parser.add_argument('--output-dir', type=str, default='output', help='Output directory for converted .mp4 files (default: output)')
     parser.add_argument('--dry-run', action='store_true', help='Show what would be done without running FFmpeg or modifying files.')

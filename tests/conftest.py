@@ -1,3 +1,4 @@
+import json
 import os
 import shutil
 import stat
@@ -35,6 +36,11 @@ class Workspace:
 
     def files(self, pattern):
         return sorted((self.root / 'output').rglob(pattern))
+
+    def ffmpeg_calls(self):
+        """Command lines the fake ffmpeg received, when FAKE_FFMPEG_LOG is set."""
+        log = Path(self.env['FAKE_FFMPEG_LOG'])
+        return [json.loads(line) for line in log.read_text(encoding='utf-8').splitlines()]
 
     def run(self, script, *args):
         return subprocess.run(
