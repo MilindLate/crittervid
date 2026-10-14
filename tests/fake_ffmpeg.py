@@ -11,6 +11,41 @@ command lines the pipeline builds to simulate success and failure:
 import sys
 
 
+def parse_concat_line(line):
+    """Read a `file <path>` line of a concat list the way FFmpeg does.
+
+    The list is UTF-8. Inside single quotes everything is literal up to the next
+    quote; outside quotes a backslash escapes the next character, and whitespace
+    ends the path. So a quote within a quoted path must be written as '\\'' and an
+    unescaped one leaves the path wrong or a quote unclosed, which is an error.
+    """
+    text = line.strip()
+    if not text.startswith('file '):
+        sys.exit(f'fake ffmpeg: bad concat line {line!r}')
+    rest = text[len('file '):].lstrip()
+    path, quoted, i = [], False, 0
+    while i < len(rest):
+        c = rest[i]
+        if quoted:
+            if c == "'":
+                quoted = False
+            else:
+                path.append(c)
+        elif c == "'":
+            quoted = True
+        elif c == '\\' and i + 1 < len(rest):
+            i += 1
+            path.append(rest[i])
+        elif c.isspace():
+            break
+        else:
+            path.append(c)
+        i += 1
+    if quoted or rest[i:].strip():
+        sys.exit(f'fake ffmpeg: bad concat line {line!r}')
+    return ''.join(path)
+
+
 def fail(out_path):
     with open(out_path, 'wb') as f:
         f.write(b'PARTIAL')
@@ -29,13 +64,9 @@ def main():
 
     if '-f' in args and args[args.index('-f') + 1] == 'concat':
         data = b''
-        # Like real ffmpeg: the list is UTF-8, and a quote inside a quoted
-        # path is written as '\''
         with open(in_path, encoding='utf-8') as filelist:
             for line in filelist:
-                # Lines look like: file '<path>'
-                path = line.strip()[len("file '"):-1].replace("'\\''", "'")
-                with open(path, 'rb') as f:
+                with open(parse_concat_line(line), 'rb') as f:
                     data += f.read()
     else:
         with open(in_path, 'rb') as f:

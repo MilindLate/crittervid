@@ -141,8 +141,11 @@ def convert_media_file_parallel(args):
 
 def main():
     # Paths can contain characters the console's code page can't encode (e.g. the
-    # Windows default when output is piped to the GUI), so always write UTF-8
-    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    # Windows default when output is piped to the GUI), so always write UTF-8.
+    # The streams are None when there's no console at all (pythonw).
+    for stream in (sys.stdout, sys.stderr):
+        if stream is not None:
+            stream.reconfigure(encoding='utf-8', errors='replace')
     parser = argparse.ArgumentParser(description="Convert .media files to .mp4 with optional hardware acceleration.")
     parser.add_argument('--input-dir', type=str, default='input/DCIM', help='Input directory containing .media files (default: input/DCIM)')
     parser.add_argument('--output-dir', type=str, default='output', help='Output directory for converted .mp4 files (default: output)')

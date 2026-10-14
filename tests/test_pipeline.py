@@ -115,6 +115,15 @@ def test_process_all_handles_quotes_and_non_ascii_in_paths(ws):
     assert out_dir in result.stdout
 
 
+def test_error_output_is_utf8(ws):
+    # Errors go to stderr, which must be UTF-8 like stdout so the GUI shows
+    # non-ASCII characters in error messages correctly
+    result = ws.run('convert_media.py', '--accel', 'ė')
+
+    assert result.returncode != 0
+    assert "'ė'" in result.stderr
+
+
 def test_process_all_output_is_in_order_when_piped(ws):
     # The GUI reads the pipeline through a pipe; step headers must not be held
     # back in a buffer and show up after the output of the steps they introduce

@@ -79,8 +79,11 @@ def merge_group(period_start, files, summary, split_idx=None, total_splits=None)
 
 def main():
     # Paths can contain characters the console's code page can't encode (e.g. the
-    # Windows default when output is piped to the GUI), so always write UTF-8
-    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    # Windows default when output is piped to the GUI), so always write UTF-8.
+    # The streams are None when there's no console at all (pythonw).
+    for stream in (sys.stdout, sys.stderr):
+        if stream is not None:
+            stream.reconfigure(encoding='utf-8', errors='replace')
     parser = argparse.ArgumentParser(description="Merge .mp4 segments into longer clips per group and time period.")
     parser.add_argument('--output-dir', type=str, default='output', help='Output directory containing .mp4 files to merge (default: output)')
     parser.add_argument('--splits-per-day', type=int, default=1, help='Number of merged .mp4 files to create per day per group (default: 1, i.e. all segments merged into one file per day).')
