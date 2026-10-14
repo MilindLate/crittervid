@@ -28,7 +28,7 @@ if __name__ == '__main__':
         for port in range(start_port, start_port + max_tries):
             try:
                 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                    s.bind(('', port))
+                    s.bind(('127.0.0.1', port))
                     return port
             except OSError:
                 continue
@@ -43,9 +43,9 @@ if __name__ == '__main__':
         app_path,
         '--global.developmentMode=false',
         f'--server.port={port}',
+        # Listen on this computer only; the GUI must not be reachable from the network
+        '--server.address=localhost',
         '--server.headless=true',
-        '--server.enableCORS=false',
-        '--server.enableXsrfProtection=false',
         '--browser.serverAddress=localhost',
         '--browser.gatherUsageStats=false',
     ]
