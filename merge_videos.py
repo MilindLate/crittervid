@@ -56,15 +56,18 @@ def merge_group(period_start, files, summary, split_idx=None, total_splits=None)
     tmp_path = out_dir / (out_name + '.part')
     # Create filelist.txt for ffmpeg concat
     filelist_path = out_dir / f"filelist_{start_str}.txt"
-    with open(filelist_path, 'w') as f:
+    # FFmpeg reads the list as UTF-8, and a quote inside a quoted path must be
+    # written as '\''
+    with open(filelist_path, 'w', encoding='utf-8') as f:
         for _, file in files:
-            f.write(f"file '{file.resolve()}'\n")
+            escaped = str(file.resolve()).replace("'", "'\\''")
+            f.write(f"file '{escaped}'\n")
     cmd = [FFMPEG_PATH, '-y', '-f', 'concat', '-safe', '0', '-i', str(filelist_path), '-c', 'copy', '-f', 'mp4', str(tmp_path)]
     result = subprocess.run(cmd, capture_output=True)
     filelist_path.unlink()
     if result.returncode != 0:
         tmp_path.unlink(missing_ok=True)
-        error_msg = f"Failed to merge {out_name}: {result.stderr.decode()}"
+        error_msg = f"Failed to merge {out_name}: {result.stderr.decode('utf-8', errors='replace')}"
         print(error_msg)
         summary.append(f"ERROR: {error_msg}")
         return False
@@ -75,6 +78,9 @@ def merge_group(period_start, files, summary, split_idx=None, total_splits=None)
     return True
 
 def main():
+    # Paths can contain characters the console's code page can't encode (e.g. the
+    # Windows default when output is piped to the GUI), so always write UTF-8
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
     parser = argparse.ArgumentParser(description="Merge .mp4 segments into longer clips per group and time period.")
     parser.add_argument('--output-dir', type=str, default='output', help='Output directory containing .mp4 files to merge (default: output)')
     parser.add_argument('--splits-per-day', type=int, default=1, help='Number of merged .mp4 files to create per day per group (default: 1, i.e. all segments merged into one file per day).')
@@ -103,7 +109,7 @@ def main():
                 failed += 1
     # Write summary report
     MERGED_ROOT.mkdir(parents=True, exist_ok=True)
-    with open(SUMMARY_REPORT, 'w') as f:
+    with open(SUMMARY_REPORT, 'w', encoding='utf-8') as f:
         for line in summary:
             f.write(line + '\n')
     print(f"Summary report written to {SUMMARY_REPORT}")

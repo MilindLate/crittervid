@@ -39,7 +39,8 @@ class Workspace:
     def run(self, script, *args):
         return subprocess.run(
             [sys.executable, script, *args],
-            cwd=self.root, env=self.env, capture_output=True, text=True,
+            cwd=self.root, env=self.env, capture_output=True,
+            encoding='utf-8', errors='replace',
         )
 
 

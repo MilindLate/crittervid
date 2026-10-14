@@ -81,6 +81,9 @@ def validate_merged(workers):
 
 
 def main():
+    # Paths can contain characters the console's code page can't encode (e.g. the
+    # Windows default when output is piped to the GUI), so always write UTF-8
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
     parser = argparse.ArgumentParser(description='Validate output videos for naming and playability.')
     parser.add_argument('--output-dir', type=str, default='output', help='Output directory containing .mp4 files to validate (default: output)')
     parser.add_argument('--workers', type=int, default=4, help='Number of parallel validation workers (default: 4)')

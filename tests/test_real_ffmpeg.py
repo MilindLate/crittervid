@@ -25,6 +25,17 @@ def test_full_pipeline(real_ws):
     assert real_ws.files('*.part') == []
 
 
+def test_full_pipeline_with_quote_and_non_ascii_output_dir(real_ws):
+    out_dir = "out O'Brien ėų 野"
+    make_clip(real_ws, '0001.media')
+    make_clip(real_ws, '0002.media')
+
+    result = real_ws.run('process_all.py', '--accel', 'cpu', '--output-dir', out_dir)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert len(list((real_ws.root / out_dir).rglob('merged_*.mp4'))) == 1
+
+
 def test_unreadable_input_fails_cleanly(real_ws):
     make_clip(real_ws, '0001.media')
     real_ws.add_media('0002.media', bytes(range(256)) * 20)

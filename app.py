@@ -156,9 +156,10 @@ if st.button("Run"):
         env=env,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
-        text=True,
+        # The pipeline scripts write UTF-8 regardless of the system code page
+        encoding='utf-8',
+        errors='replace',
         bufsize=1,
-        universal_newlines=True
     )
 
     # Stream output line by line, update UI every 5 lines

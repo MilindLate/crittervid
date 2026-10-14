@@ -29,10 +29,13 @@ def main():
 
     if '-f' in args and args[args.index('-f') + 1] == 'concat':
         data = b''
-        with open(in_path) as filelist:
+        # Like real ffmpeg: the list is UTF-8, and a quote inside a quoted
+        # path is written as '\''
+        with open(in_path, encoding='utf-8') as filelist:
             for line in filelist:
                 # Lines look like: file '<path>'
-                with open(line.strip()[len("file '"):-1], 'rb') as f:
+                path = line.strip()[len("file '"):-1].replace("'\\''", "'")
+                with open(path, 'rb') as f:
                     data += f.read()
     else:
         with open(in_path, 'rb') as f:
