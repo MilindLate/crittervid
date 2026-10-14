@@ -10,7 +10,8 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 TESTS_DIR = Path(__file__).resolve().parent
-SCRIPTS = ['ffmpeg_helper.py', 'convert_media.py', 'merge_videos.py', 'validate_output.py', 'process_all.py']
+SCRIPTS = ['ffmpeg_helper.py', 'convert_media.py', 'merge_videos.py', 'validate_output.py', 'process_all.py',
+           'app.py']
 
 # Matches the camera layout: DCIM/YYYY/MM/DD/<unixtimestamp>_<groupid>/
 GROUP_DIR = Path('input/DCIM/2026/10/01/1759300000_0001')
@@ -88,12 +89,18 @@ def ws(tmp_path, fake_ffmpeg_dir):
     return make_workspace(tmp_path, fake_ffmpeg_dir)
 
 
+def require(available, what):
+    """Skip the test if a dependency is missing, or fail when CRITTERVID_REQUIRE_DEPS
+    is set (as on CI), so a broken install can't silently skip tests."""
+    if available:
+        return
+    if os.environ.get('CRITTERVID_REQUIRE_DEPS'):
+        pytest.fail(f'{what} not available (required by CRITTERVID_REQUIRE_DEPS)')
+    pytest.skip(f'{what} not available')
+
+
 @pytest.fixture
 def real_ws(tmp_path):
-    """Workspace that uses the real ffmpeg from PATH; skips if it isn't installed
-    (fails instead when CRITTERVID_REQUIRE_FFMPEG is set, as on CI)."""
-    if not shutil.which('ffmpeg'):
-        if os.environ.get('CRITTERVID_REQUIRE_FFMPEG'):
-            pytest.fail('ffmpeg not found on PATH (required by CRITTERVID_REQUIRE_FFMPEG)')
-        pytest.skip('ffmpeg not found on PATH')
+    """Workspace that uses the real ffmpeg and ffprobe from PATH."""
+    require(shutil.which('ffmpeg') and shutil.which('ffprobe'), 'ffmpeg and ffprobe on PATH')
     return make_workspace(tmp_path)

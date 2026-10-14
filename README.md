@@ -90,8 +90,16 @@ python -m pytest
 ```
 
 Most tests use a stand-in for FFmpeg (`tests/fake_ffmpeg.py`) and run anywhere.
-The end-to-end tests in `tests/test_real_ffmpeg.py` use the real FFmpeg and are
-skipped when it isn't on your `PATH`.
+Some need more, and are skipped when it's missing:
+
+- `tests/test_e2e.py` and `tests/test_real_ffmpeg.py` run the real FFmpeg (and
+  ffprobe) on generated footage, including a simulated SD card, and check the
+  outputs' durations. They need FFmpeg on your `PATH`.
+- `tests/test_gui.py` drives the GUI with Streamlit's test harness. It needs
+  Streamlit installed.
+
+CI sets `CRITTERVID_REQUIRE_DEPS=1`, which makes those tests fail instead of skip
+when a dependency is missing.
 
 ## Building a standalone executable
 

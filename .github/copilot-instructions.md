@@ -20,7 +20,7 @@ CritterVid converts segmented `.media` files from wildlife trail cameras into `.
 - Keep code cross-platform (Windows, macOS, Linux): `pathlib`, no Windows-only APIs.
 
 ## Tests
-- `python -m pytest`. Most tests use a stand-in FFmpeg (`tests/fake_ffmpeg.py`); `tests/test_real_ffmpeg.py` needs FFmpeg on `PATH` and is skipped otherwise.
+- `python -m pytest`. Most tests use a stand-in FFmpeg (`tests/fake_ffmpeg.py`). `tests/test_e2e.py` (a generated SD card through the whole pipeline) and `tests/test_real_ffmpeg.py` need FFmpeg and ffprobe on `PATH`; `tests/test_gui.py` (Streamlit `AppTest`) needs Streamlit. They're skipped when those are missing, unless `CRITTERVID_REQUIRE_DEPS` is set, as on CI.
 - CI runs the suite on Windows, macOS and Ubuntu (`.github/workflows/tests.yml`).
 
 ## Workflow
