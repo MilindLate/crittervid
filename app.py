@@ -14,6 +14,22 @@ else:
 
 st.set_page_config(page_title="CritterVid", page_icon="🦜", layout="wide")
 
+
+def _hostname(host_header):
+    """Host header without its port: 'localhost:8501' -> 'localhost', '[::1]:8501' -> '::1'."""
+    if host_header.startswith('['):
+        return host_header[1:].split(']', 1)[0]
+    return host_header.split(':', 1)[0]
+
+
+# Only serve requests addressed to this computer. The server listens on localhost
+# only, but a web page could still reach it through DNS rebinding (its own
+# hostname pointed at 127.0.0.1), so refuse any other Host before anything runs.
+if _hostname(st.context.headers.get("Host", "")).lower() not in ("localhost", "127.0.0.1", "::1"):
+    st.error("CritterVid only accepts connections from this computer. "
+             "Open it at http://localhost:8501 (or the address the launcher printed).")
+    st.stop()
+
 st.title("🦜 CritterVid")
 st.markdown("*Automated processing pipeline for wildlife & trail-camera footage*")
 
