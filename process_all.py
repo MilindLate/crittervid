@@ -29,8 +29,13 @@ def run_script(script, dry_run):
 
 def main():
     # Flush each line so step headers stay in order with the child scripts' output
-    # when stdout is a pipe (e.g. the GUI or `| tee`)
-    sys.stdout.reconfigure(line_buffering=True)
+    # when stdout is a pipe (e.g. the GUI or `| tee`). Write UTF-8 like the child
+    # scripts, since paths can contain characters the console's code page lacks
+    # The streams are None when there's no console at all (pythonw).
+    if sys.stdout is not None:
+        sys.stdout.reconfigure(line_buffering=True, encoding='utf-8', errors='replace')
+    if sys.stderr is not None:
+        sys.stderr.reconfigure(encoding='utf-8', errors='replace')
     parser = argparse.ArgumentParser(description="Convert and merge Green Feathers camera videos.")
     parser.add_argument('--input-dir', type=str, default='input/DCIM', help='Input directory containing .media files (default: input/DCIM)')
     parser.add_argument('--output-dir', type=str, default='output', help='Output directory for converted .mp4 files (default: output)')

@@ -126,6 +126,30 @@ def test_process_all_fails_when_a_step_fails(ws):
     assert 'Some steps failed' in result.stdout
 
 
+def test_process_all_handles_quotes_and_non_ascii_in_paths(ws):
+    # An apostrophe must be escaped in the concat list, and characters outside
+    # the Windows default code page must not crash printing or file writes
+    out_dir = "out O'Brien ėų 野"
+    ws.add_media('0001.media', b'a')
+    ws.add_media('0002.media', b'b')
+
+    result = ws.run('process_all.py', '--accel', 'cpu', '--output-dir', out_dir)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    [merged] = (ws.root / out_dir).rglob('merged_*.mp4')
+    assert merged.read_bytes() == b'OKOKaOKb'
+    assert out_dir in result.stdout
+
+
+def test_error_output_is_utf8(ws):
+    # Errors go to stderr, which must be UTF-8 like stdout so the GUI shows
+    # non-ASCII characters in error messages correctly
+    result = ws.run('convert_media.py', '--accel', 'ė')
+
+    assert result.returncode != 0
+    assert "'ė'" in result.stderr
+
+
 def test_process_all_output_is_in_order_when_piped(ws):
     # The GUI reads the pipeline through a pipe; step headers must not be held
     # back in a buffer and show up after the output of the steps they introduce

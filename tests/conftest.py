@@ -39,7 +39,8 @@ class Workspace:
     def run(self, script, *args):
         return subprocess.run(
             [sys.executable, script, *args],
-            cwd=self.root, env=self.env, capture_output=True, text=True,
+            cwd=self.root, env=self.env, capture_output=True,
+            encoding='utf-8', errors='replace',
         )
 
 
@@ -51,7 +52,10 @@ def make_workspace(tmp_path, path_prefix=None):
     for name in SCRIPTS:
         shutil.copy(REPO_ROOT / name, app)
     env = dict(os.environ)
-    env.pop('PYTHONUNBUFFERED', None)
+    # Run the scripts as they'd run on a plain machine: these variables would hide
+    # buffering and encoding bugs the tests are meant to catch
+    for var in ('PYTHONUNBUFFERED', 'PYTHONUTF8', 'PYTHONIOENCODING'):
+        env.pop(var, None)
     if path_prefix:
         env['PATH'] = str(path_prefix) + os.pathsep + env['PATH']
     return Workspace(app, env)
