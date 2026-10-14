@@ -1,0 +1,85 @@
+# 0001: The .media format, and how to convert it
+
+- **Status:** accepted
+- **Issues:** investigation #22 and #23; follow-up #71, #72, #73, #74
+
+## Context
+
+CritterVid converted `.media` files by handing them to FFmpeg as if they were plain video. Nobody had checked what the files contain. Phase 1 of the roadmap examined real SD cards to find out, using copies; the originals were never modified. This record describes what was found and what it means for the design. Format facts only: nothing here identifies a camera, a site or a recording date.
+
+`tools/inspect_media.py` reproduces the format analysis on any `.media` file or event folder.
+
+## Findings: the `.media` card
+
+The card holds about 2,200 events and 95,000 `.media` files (88.5 GB).
+
+### Layout
+`DCIM/YYYY/MM/DD/<event start>_<duration>/<offset>.media`, plus one `.info` per event. This matches Tuya's documented IPC storage layout.
+
+- `<event start>` is a Unix time.
+- `<duration>` is the event's length in seconds, so it is **not a group ID** (#30). It agrees with the segment offsets.
+- `<offset>` is the segment's start in seconds from the event start. Segments are about 13.5 s long, and events are mostly 10 minutes long.
+- The date folders are in the **camera's local time**, which isn't necessarily UTC. Events near midnight therefore sit in a different date folder than their UTC date would suggest.
+
+### Record format
+Each `.media` file is a sequence of records. Every byte of every sampled file is accounted for (149 of 149 sampled segments).
+
+| Bytes | Field |
+|---|---|
+| 0–3 | record type: `0` video frame, `1` video keyframe (begins with SPS/PPS), `3` audio |
+| 4–7 | payload length |
+| 8–11 | a millisecond value (meaning not confirmed) |
+| 12–15 | always 0 |
+| 16–23 | **timestamp, microseconds** |
+
+- **Video:** H.264 High profile, 2304×1296, in Annex B form. It runs at **about 14.7 fps** on average, with frames 50 or 100 ms apart (variable), and a keyframe every ~4.5 s.
+- **Audio:** **PCM signed 16-bit, 8 kHz, mono**, in 640-byte records every 40 ms.
+
+### `.info`
+Every `.info` file on the card is identical: `{"version": 1, "eventType": 0, "codec": 2}`. They carry no event-specific information.
+
+### Clock problems
+A few events were recorded before the camera's clock was set:
+- They're in `1970/…` folders, or in `2106/…` folders where the local date wrapped around below 1970.
+- They have no `.info` file.
+
+Their footage is valid, but their times are not (#73).
+
+## Findings: a second, MP4-based camera
+
+A second card, from a different camera or firmware, has no `.media` files at all. It records MP4 directly:
+
+- **Layout:** `record/YYYYMMDD/HH/<session start>/<segment start>.mp4`. Date and hour folders are in local time; the names are Unix times.
+- **Segments:** 3 s long, HEVC 1920×1080 at a constant 20 fps, with G.711 A-law 8 kHz audio. About 6% of segments are followed by a 1–2 s gap.
+- **`.record_msg` files:** binary records of (start time, duration in seconds, 256) that look like a motion-event index. Not yet verified.
+
+Details in #72.
+
+## Verification
+
+- **Today's conversion is wrong.** One 13.4 s segment, converted with the command `convert_media.py` uses, becomes an **18.0 s** MP4 at 11 fps **with no audio**. FFmpeg reads `.media` as raw H.264 and doesn't see the record timestamps or the audio.
+- **Reading the records works.** A proof of concept rebuilt one whole event (45 segments, folder duration `0602`) from its records:
+  - video copied without re-encoding, at the average frame rate from the timestamps
+  - audio encoded as AAC
+
+  The result is **601.97 s** of video and **601.92 s** of audio, in sync with each other and with the folder's duration.
+
+## Decisions
+
+1. **Convert `.media` by parsing its records** (#71). Write the H.264 video into MP4 **without re-encoding**, using each frame's own timestamp (variable frame rate), and encode the audio as AAC. This replaces running FFmpeg directly on the file. It fixes both the timing and the missing audio, and makes hardware encoding unnecessary for these files.
+2. **Check every converted event against its folder's duration suffix.** A mismatch means the conversion is wrong, so report it rather than producing silently mistimed footage.
+3. **Read each camera format with its own reader.** The `.media` cards and the MP4 `record/` cards differ in layout, codecs and timing. Each gets a reader that produces the same internal description of events and segments (#24, #25, #72).
+4. **The camera's time zone is an input, not an assumption.** Folder dates follow the camera's local time and event names follow UTC, so the deployment's time zone must be entered by the user (#36). Events from before the clock was set are detected and kept apart (#73).
+5. **Test with the real record format** (#74). Generated `.media` test fixtures should use records with variable timestamps and audio, so the tests catch the problems found here.
+
+## Consequences
+
+- Existing outputs made with earlier versions play at the wrong speed and have no sound. They should be regenerated once #71 lands.
+- Hardware-encoder selection (#2, #10) matters much less for `.media` cards, because their video is copied rather than re-encoded.
+- Behaviour analysis gets correct durations, which it depends on.
+
+## Open questions
+
+- What does the millisecond field (bytes 8–11) hold? It's close to, but not equal to, the microsecond timestamp.
+- Are there other record types or `eventType` values on other cameras or firmware versions?
+- Do the `.record_msg` files really index motion events, and why do MP4 session folders start minutes before their first segment?
